@@ -1,6 +1,6 @@
 [
   {
-    "directory": "/Users/valentin/tilings",
+    "directory": "/Users/valentin/tiling-engine",
     "command": "clang++ -std=c++23 -Wall -Wextra -c main.cpp",
     "file": "main.cpp"
   }

@@ -1,5 +1,7 @@
 
 out
+compile_commands.json
+
 _site/
 .sass-cache/
 .jekyll-cache/

@@ -3,7 +3,12 @@
 #include <vector>
 #include "poly.hpp"
 
-uint64 count(Poly& poly, const std::vector<Poly>& tiles, HT& memo) {
+struct TileData {
+    uint64 hash;
+    uint8 roof;
+};
+
+uint64 count(Poly& poly, const std::vector<Poly>& tiles, HT& memo, std::vector<TileData>& tileData) {
     // if (poly.empty()) return 1;
 
     uint64 hash = poly.hash();
@@ -18,17 +23,18 @@ uint64 count(Poly& poly, const std::vector<Poly>& tiles, HT& memo) {
     // if (it2 != memo.end()) return it -> second;
     //
     uint64 total = 0;
-    for (const Poly& tile : tiles) {
-        if (tile.hash() == hash) return 1;
+    for (size_t i = 0; i < tiles.size(); i++) {
+        const Poly& tile = tiles[i];
+        if (tileData[i].hash == hash) return 1;
 
-        int px = poly.roof() - tile.roof();
+        int px = poly.roof() - tileData[i].roof;
         int py = poly.top - tile.top;
 
         bool fits = poly.fits(tile, px, py);
 
         if (fits) {
             poly.unset(tile, px, py);
-            total += count(poly, tiles, memo);
+            total += count(poly, tiles, memo, tileData);
             poly.set(tile, px, py);
         }
     }
@@ -39,8 +45,13 @@ uint64 count(Poly& poly, const std::vector<Poly>& tiles, HT& memo) {
 
 uint64 count(const Poly& p, const std::vector<Poly>& tiles) {
     HT memo = {};
+    memo.reserve(1000000);
+
+    std::vector<TileData> tileData;
+    for (size_t i = 0; i < tiles.size(); i++) tileData.emplace_back(tiles[i].hash(), tiles[i].roof());
+
     Poly poly = p;
-    return count(poly, tiles, memo);
+    return count(poly, tiles, memo, tileData);
 }
 
 void perft() {
@@ -57,15 +68,15 @@ void perft() {
         auto t = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
         std::print("{0}x{0}: {1} ({2}μs)\n", i, c, t);
     }
-
 }
 
 int main() {
     perft(); 
     // Poly poly = {};
     // poly.update();
-    // Poly domino = Poly::Rect(2,1);
-    //
-    // poly.set(domino, 3, 5);
-    // std::cout << poly << std::endl << poly.left << ", " << poly.width << ", " << poly.top << ", " << poly.height << std::endl;
+    // Poly poly = Poly::Rect(2,2);
+    // poly.unset(Poly::Rect(2,1), 0, 0);
+    // poly.update();
+
+    // std::cout << poly << std::endl << int(poly.left) << ", " << int(poly.width) << ", " << int(poly.top) << ", " << int(poly.height) << std::endl;
 }

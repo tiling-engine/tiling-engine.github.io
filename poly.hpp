@@ -25,35 +25,41 @@ struct Poly {
     uint64 rows[64] = {};
 
     uint8 left = 0;
+    uint8 right = 0;
+
     uint8 top = 0;
-
-    uint8 width = 0;
-    uint8 height = 0;
-
+    uint8 bottom = 0;
+ 
     bool get(uint8 x, uint8 y) const {
         return rows[y] & (1ULL << (63 - x));
     }
 
-    void update() {
+    void update_top(uint8 t = 0) {
         top = 0;
-        for (uint8 y = 0; y < 64; y++) {
-            if (rows[y]) { top = y; break; }
-        }
+        for (uint8 y = t; y < 64; y++) if (rows[y]) { top = y; break; }
+    }
 
-        height = 0;
-        for (int y = 63; y >= 0; y--) {
-            if (rows[y]) { height = y - top + 1; break; }
-        }
+    void update_bottom(uint8 b = 0) {
+        bottom = 0;
+        for (uint8 y = b; y < 64; y++) if (rows[63 - y]) { bottom = y; break; }
+    }
 
+    void update_left_right() {
         uint64 total = 0;
-        for (uint8 y = top; y < top + height; y++) total |= rows[y];
+        for (uint8 y = top; y < 64 - bottom; y++) total |= rows[y];
         left = total ? std::countl_zero(total) : 0;
-        width = total ? 64 - std::countr_zero(total) - left : 0;
+        right = total ? std::countr_zero(total) : 0;
+    }
+
+    void update() {
+        update_top();
+        update_bottom();
+        update_left_right();
     }
 
     bool fits(const Poly& tile, int px, int py) const {
-        if (tile.top + py < top || tile.top + tile.height + py > top + height) return false;
-        for (uint8 y = tile.top; y < tile.top + tile.height; y++) {
+        if (tile.top + py < top || 64 - tile.bottom + py > 64 - bottom) return false;
+        for (uint8 y = tile.top; y < 64 - tile.bottom; y++) {
             uint64 shift = px >= 0 ? rows[y + py] << px : rows[y + py] >> -px;
             if ((tile.rows[y] & shift) != tile.rows[y]) return false;
         }
@@ -65,8 +71,7 @@ struct Poly {
     }
 
     void set(const Poly& tile, int px, int py) {
-        uint8 right = 64 - left - width;
-        for (uint8 y = tile.top; y < tile.top + tile.height; y++) {
+        for (uint8 y = tile.top; y < 64 - tile.bottom; y++) {
             if (y + py < 0 || y + py > 63) continue;
             uint64 shift = px >= 0 ? tile.rows[y] >> px : tile.rows[y] << -px;
             rows[y + py] |= shift;
@@ -75,27 +80,21 @@ struct Poly {
             right = std::min(right, uint8(std::countr_zero(shift)));
         }
 
-        width = 64 - left - right;
-        uint8 bottom = std::min(64 - tile.top - tile.height - py, 64 - top - height);
+        bottom = std::min(bottom, uint8(tile.bottom - py));
         top = std::min(top, uint8(tile.top + py));
-        height = 64 - top - bottom;
     }
 
      void unset(const Poly& tile, int px, int py) {
-        bool dirty = false;
-        for (uint8 y = tile.top; y < tile.top + tile.height; y++) {
+        for (uint8 y = tile.top; y < 64 - tile.bottom; y++) {
             if (y + py < 0 || y + py > 63) continue;
             uint64 shift = px >= 0 ? tile.rows[y] >> px : tile.rows[y] << -px;
             rows[y + py] &= (~shift);
-            
-            if (std::countl_zero(shift) == left) dirty = true;
-            if (std::countr_zero(shift) == 64 - left - width) dirty = true;
         }
 
-        if (tile.top + py == top) dirty = true;
-        if (tile.top + tile.height + py == top + height) dirty = true;
+        if (tile.bottom - py == bottom) update_bottom(bottom);
+        if (tile.top + py == top) update_top(top);
 
-        if (dirty) update();
+        update_left_right();
     }
 
     int roof() const {
@@ -103,18 +102,18 @@ struct Poly {
     }
 
     bool empty() const {
-        return width == 0 || height == 0;
+        return left == 0 && right == 0;
     }
 
     uint64 size() const {
         uint64 total = 0;
-        for (int y = top; y < top + height; y++) total += std::popcount(rows[y]);
+        for (int y = top; y < 64 - bottom; y++) total += std::popcount(rows[y]);
         return total;
     }
 
     uint64 hash() const {
         uint64 h1 = 0x7485736ef72091afULL;
-        for (int y = top; y < top + height; y++) {
+        for (int y = top; y < 64 - bottom; y++) {
             uint64 x = rows[y] << left;
             h1 ^= x + 0x9e3779b97f4a7c15ULL + (h1 << 6) + (h1 >> 2);
             h1 ^= h1 >> 30;
@@ -180,8 +179,8 @@ struct Poly {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Poly& poly) {
-    for (int y = poly.top; y < poly.top + poly.height; y++) {
-        for (int x = poly.left; x < poly.left + poly.width; x++) {
+    for (int y = poly.top; y < 64 - poly.bottom; y++) {
+        for (int x = poly.left; x < 64 - poly.right; x++) {
             os << (poly.get(x, y) ? '#' : '.');
         }
         os << '\n';
