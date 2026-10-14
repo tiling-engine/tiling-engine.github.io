@@ -1,0 +1,30 @@
+body {
+    margin: 20px;
+    font-family: sans-serif;
+    background: #181818;
+    color: white;
+    display: flex;
+    justify-content: space-around;
+}
+
+#grid {
+    width: 90vh;
+    height: 90vh;
+    display: grid;
+    grid-template-columns: repeat(64, 1fr);
+    grid-template-rows: repeat(64, 1fr);
+    border-left: 1px solid #555;
+    border-top: 1px solid #555;
+}
+
+.cell {
+    background: #333;
+    cursor: pointer;
+    border-right: 1px solid #555;
+    border-bottom: 1px solid #555;
+}
+
+.cell.active {
+    background: #4ade80;
+}
+

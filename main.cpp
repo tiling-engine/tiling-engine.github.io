@@ -2,6 +2,7 @@
 #include <chrono>
 #include <vector>
 #include "poly.hpp"
+#include <emscripten.h>
 
 struct TileData {
     uint64 hash;
@@ -54,6 +55,21 @@ uint64 count(const Poly& p, const std::vector<Poly>& tiles) {
     return count(poly, tiles, memo, tileData);
 }
 
+uint64 countDomino(const Poly& poly) {
+    std::vector<Poly> tiles = {
+        Poly::Rect(2,2),
+        Poly::Rect(2,2),
+        Poly::Rect(2,2),
+        Poly::Rect(2,2)
+    };
+    tiles[0].flip(0,0);
+    tiles[1].flip(1,0);
+    tiles[2].flip(0,1);
+    tiles[3].flip(1,1);
+  
+    return count(poly, tiles);
+}
+
 void perft() {
     std::vector<Poly> tiles = {
         Poly::Rect(1,2),
@@ -79,4 +95,17 @@ int main() {
     // poly.update();
 
     // std::cout << poly << std::endl << int(poly.left) << ", " << int(poly.width) << ", " << int(poly.top) << ", " << int(poly.height) << std::endl;
+}
+
+extern "C" {
+
+    EMSCRIPTEN_KEEPALIVE
+    uint64_t countDomino(const uint64_t* rows) {
+        Poly poly;
+        for (int y = 0; y < 64; y++) poly.rows[y] = rows[y];
+        poly.update();
+
+        return countDomino(poly);
+    }
+
 }
